@@ -1,10 +1,10 @@
 const CACHE_NAME = 'lich-lam-viec-v1';
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './css/style.css',
+  './js/app.js',
+  './manifest.json'
   // Icons should also be cached if they exist
 ];
 
@@ -76,8 +76,8 @@ self.addEventListener('push', function(event) {
     const data = event.data.json();
     const options = {
       body: data.body || 'Bạn có thông báo mới',
-      icon: '/images/icon-192x192.png',
-      badge: '/images/icon-192x192.png'
+      icon: './images/icon-192x192.png',
+      badge: './images/icon-192x192.png'
     };
     event.waitUntil(
       self.registration.showNotification(data.title || 'Thông báo lịch làm việc', options)

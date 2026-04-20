@@ -2,18 +2,18 @@
   "name": "Lịch Làm Việc",
   "short_name": "Lịch",
   "description": "Ứng dụng xem lịch làm việc",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#0056b3",
   "icons": [
     {
-      "src": "/images/icon-192x192.png",
+      "src": "./images/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/images/icon-512x512.png",
+      "src": "./images/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
