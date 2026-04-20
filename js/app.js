@@ -65,6 +65,13 @@ function setOneSignalTag(name) {
     OneSignal.User.addTag("employee_name", name).then(() => {
       console.log("OneSignal tag updated:", name);
     });
+    
+    // Set External ID để hiển thị tên user trên OneSignal Dashboard
+    OneSignal.login(name).then(() => {
+      console.log("OneSignal logged in with external ID:", name);
+    }).catch(err => {
+      console.error("OneSignal login error:", err);
+    });
   });
 }
 
