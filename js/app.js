@@ -5,10 +5,13 @@ const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
+  // Tự động tính toán đường dẫn thư mục gốc hiện tại (hoạt động tốt với thư mục con của Github Pages)
+  const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+  
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
-    serviceWorkerParam: { scope: "./" },
-    serviceWorkerPath: "OneSignalSDKWorker.js"
+    serviceWorkerParam: { scope: basePath },
+    serviceWorkerPath: basePath + "OneSignalSDKWorker.js"
   });
 });
 
@@ -53,9 +56,9 @@ function saveEmployeeCode() {
       document.getElementById('login-modal').style.display = 'none';
       setOneSignalTag(codeInput);
       
-      // Yêu cầu quyền thông báo ngay khi lưu
+      // Yêu cầu quyền thông báo ngay khi lưu (chỉ hiển thị nếu người dùng chưa từng cho phép)
       window.OneSignalDeferred.push(function(OneSignal) {
-        OneSignal.Slidedown.promptPush();
+        OneSignal.Notifications.requestPermission();
       });
     } else {
       alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
