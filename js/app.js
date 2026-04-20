@@ -5,8 +5,12 @@ const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
-  // Tự động tính toán đường dẫn thư mục gốc hiện tại (hoạt động tốt với thư mục con của Github Pages)
-  const basePath = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+  // Tự động tính toán đường dẫn an toàn
+  let basePath = window.location.pathname;
+  if (!basePath.endsWith('/')) {
+    if (basePath.includes('.html')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
+    else basePath += '/';
+  }
   
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
@@ -81,9 +85,8 @@ function closeLoginModal() {
 function setOneSignalTag(code) {
   window.OneSignalDeferred.push(function(OneSignal) {
     try {
-      OneSignal.User.addTag("employee_code", code).then(() => {
-        console.log("OneSignal tag updated:", code);
-      }).catch(err => alert("Lỗi AddTag: " + err));
+      OneSignal.User.addTag("employee_code", code);
+      console.log("OneSignal tag updated:", code);
       
       // Set External ID
       OneSignal.login(code).then(() => {
