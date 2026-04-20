@@ -43,6 +43,14 @@ function checkLogin() {
   }
 }
 
+function forceLogin() {
+  const savedName = localStorage.getItem('employeeName');
+  if (savedName) {
+    document.getElementById('employee-name-input').value = savedName;
+  }
+  document.getElementById('login-modal').style.display = 'flex';
+}
+
 function saveEmployeeName() {
   const nameInput = document.getElementById('employee-name-input').value.trim();
   if (nameInput) {
