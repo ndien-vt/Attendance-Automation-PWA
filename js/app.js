@@ -7,6 +7,8 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
+    serviceWorkerParam: { scope: "./" },
+    serviceWorkerPath: "OneSignalSDKWorker.js"
   });
 });
 
