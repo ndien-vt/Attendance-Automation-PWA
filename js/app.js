@@ -1,11 +1,20 @@
 // THAY THẾ BẰNG URL WEB APP CỦA BẠN SAU KHI DEPLOY CODE.GS MỚI
 const API_URL = "https://script.google.com/macros/s/AKfycbwIDaUlFyMie7b2gd0bSIyYVeAebCtAxNN__zEVRKwLSENuvytVDtd_fnpYbWT_g23_/exec";
+// THAY THẾ BẰNG ONESIGNAL APP ID CỦA BẠN
+const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
+
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+OneSignalDeferred.push(function(OneSignal) {
+  OneSignal.init({
+    appId: ONESIGNAL_APP_ID,
+  });
+});
 
 let deferredPrompt;
 
 window.onload = function () {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
+    navigator.serviceWorker.register('./OneSignalSDKWorker.js')
       .then(reg => console.log('Service Worker registered', reg))
       .catch(err => console.error('Service Worker registration failed', err));
   }
@@ -19,8 +28,48 @@ window.onload = function () {
     }
   });
 
+  checkLogin();
   fetchInitialData();
 };
+
+function checkLogin() {
+  const savedName = localStorage.getItem('employeeName');
+  if (!savedName) {
+    setTimeout(() => {
+      document.getElementById('login-modal').style.display = 'flex';
+    }, 2000); // Hiện popup sau 2 giây
+  } else {
+    setOneSignalTag(savedName);
+  }
+}
+
+function saveEmployeeName() {
+  const nameInput = document.getElementById('employee-name-input').value.trim();
+  if (nameInput) {
+    localStorage.setItem('employeeName', nameInput);
+    document.getElementById('login-modal').style.display = 'none';
+    setOneSignalTag(nameInput);
+    
+    // Yêu cầu quyền thông báo ngay khi lưu
+    window.OneSignalDeferred.push(function(OneSignal) {
+      OneSignal.Slidedown.promptPush();
+    });
+  } else {
+    alert("Vui lòng nhập họ tên chính xác của bạn.");
+  }
+}
+
+function closeLoginModal() {
+  document.getElementById('login-modal').style.display = 'none';
+}
+
+function setOneSignalTag(name) {
+  window.OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.User.addTag("employee_name", name).then(() => {
+      console.log("OneSignal tag updated:", name);
+    });
+  });
+}
 
 function installPWA() {
   const installBanner = document.getElementById('install-banner');

@@ -13,6 +13,9 @@
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   
+  <!-- OneSignal SDK -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  
   <!-- Styles -->
   <link rel="stylesheet" href="./css/style.css">
 </head>
@@ -48,6 +51,17 @@
   <div id="install-banner">
     Ứng dụng có thể cài đặt để dùng offline! 
     <button onclick="installPWA()">Cài đặt</button>
+  </div>
+  
+  <!-- Login Modal -->
+  <div id="login-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10001; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="background:white; padding:20px; border-radius:8px; width:80%; max-width:300px; text-align:center;">
+      <h3 style="margin-top:0; color:#0056b3;">Nhận dạng nhân viên</h3>
+      <p style="font-size:13px; color:#555;">Vui lòng nhập họ tên của bạn (chính xác như trong lịch) để nhận thông báo khi bị đổi lịch.</p>
+      <input type="text" id="employee-name-input" placeholder="Ví dụ: Nguyễn Văn A" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ccc; border-radius:4px; box-sizing:border-box;">
+      <button onclick="saveEmployeeName()" style="background:#0056b3; color:white; border:none; padding:10px 20px; border-radius:4px; font-weight:bold; cursor:pointer; width:100%;">Lưu & Nhận Thông Báo</button>
+      <button onclick="closeLoginModal()" style="background:transparent; color:#888; border:none; padding:10px; margin-top:5px; cursor:pointer; font-size:12px;">Bỏ qua</button>
+    </div>
   </div>
   
   <!-- App Logic -->
