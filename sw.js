@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lich-lam-viec-v6';
+const CACHE_NAME = 'lich-lam-viec-v9';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -38,12 +38,16 @@ self.addEventListener('activate', event => {
 
 // Fetch event - Network first, fallback to cache
 self.addEventListener('fetch', event => {
+  // Bỏ qua các request không phải GET hoặc các request đến OneSignal
+  if (event.request.method !== 'GET' || event.request.url.includes('onesignal.com')) {
+    return; // Để browser tự xử lý bình thường
+  }
+
   // Đối với API từ Google Apps Script, luôn ưu tiên Network, nếu lỗi thì dùng Cache
   if (event.request.url.includes('script.google.com') || event.request.url.includes('script.googleusercontent.com')) {
     event.respondWith(
       fetch(event.request)
         .then(response => {
-          // Clone the response and save it to cache
           const resClone = response.clone();
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, resClone);

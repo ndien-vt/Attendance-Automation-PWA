@@ -12,6 +12,8 @@ OneSignalDeferred.push(function(OneSignal) {
     appId: ONESIGNAL_APP_ID,
     serviceWorkerParam: { scope: basePath },
     serviceWorkerPath: basePath + "OneSignalSDKWorker.js"
+  }).catch(e => {
+    alert("Lỗi khởi tạo OneSignal: " + e);
   });
 });
 
@@ -58,7 +60,11 @@ function saveEmployeeCode() {
       
       // Yêu cầu quyền thông báo ngay khi lưu (chỉ hiển thị nếu người dùng chưa từng cho phép)
       window.OneSignalDeferred.push(function(OneSignal) {
-        OneSignal.Notifications.requestPermission();
+        try {
+          OneSignal.Notifications.requestPermission().catch(e => alert("Lỗi xin quyền: " + e));
+        } catch(e) {
+          alert("Lỗi gọi quyền: " + e.message);
+        }
       });
     } else {
       alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
@@ -74,16 +80,20 @@ function closeLoginModal() {
 
 function setOneSignalTag(code) {
   window.OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.User.addTag("employee_code", code).then(() => {
-      console.log("OneSignal tag updated:", code);
-    });
-    
-    // Set External ID để hiển thị mã user trên OneSignal Dashboard
-    OneSignal.login(code).then(() => {
-      console.log("OneSignal logged in with external ID:", code);
-    }).catch(err => {
-      console.error("OneSignal login error:", err);
-    });
+    try {
+      OneSignal.User.addTag("employee_code", code).then(() => {
+        console.log("OneSignal tag updated:", code);
+      }).catch(err => alert("Lỗi AddTag: " + err));
+      
+      // Set External ID
+      OneSignal.login(code).then(() => {
+        console.log("OneSignal logged in with external ID:", code);
+      }).catch(err => {
+        alert("Lỗi Login: " + err);
+      });
+    } catch(e) {
+      alert("Lỗi OneSignal Catch: " + e.message);
+    }
   });
 }
 
