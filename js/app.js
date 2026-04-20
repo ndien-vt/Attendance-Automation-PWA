@@ -14,9 +14,11 @@ OneSignalDeferred.push(function(OneSignal) {
 
 let deferredPrompt;
 
+let globalEmployeeMapping = {};
+
 window.onload = function () {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./OneSignalSDKWorker.js')
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('Service Worker registered', reg))
       .catch(err => console.error('Service Worker registration failed', err));
   }
@@ -26,33 +28,40 @@ window.onload = function () {
 };
 
 function checkLogin() {
-  const savedName = localStorage.getItem('employeeName');
-  if (savedName) {
-    setOneSignalTag(savedName);
+  const savedCode = localStorage.getItem('employeeCode');
+  if (savedCode) {
+    setOneSignalTag(savedCode);
   }
 }
 
 function forceLogin() {
-  const savedName = localStorage.getItem('employeeName');
-  if (savedName) {
-    document.getElementById('employee-name-input').value = savedName;
+  const savedCode = localStorage.getItem('employeeCode');
+  if (savedCode) {
+    document.getElementById('employee-code-input').value = savedCode;
   }
   document.getElementById('login-modal').style.display = 'flex';
 }
 
-function saveEmployeeName() {
-  const nameInput = document.getElementById('employee-name-input').value.trim();
-  if (nameInput) {
-    localStorage.setItem('employeeName', nameInput);
-    document.getElementById('login-modal').style.display = 'none';
-    setOneSignalTag(nameInput);
-    
-    // Yêu cầu quyền thông báo ngay khi lưu
-    window.OneSignalDeferred.push(function(OneSignal) {
-      OneSignal.Slidedown.promptPush();
-    });
+function saveEmployeeCode() {
+  const codeInput = document.getElementById('employee-code-input').value.trim();
+  if (codeInput) {
+    const name = globalEmployeeMapping[codeInput];
+    if (name) {
+      alert("Đăng ký thành công!\nXin chào: " + name);
+      localStorage.setItem('employeeCode', codeInput);
+      localStorage.setItem('employeeName', name);
+      document.getElementById('login-modal').style.display = 'none';
+      setOneSignalTag(codeInput);
+      
+      // Yêu cầu quyền thông báo ngay khi lưu
+      window.OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.Slidedown.promptPush();
+      });
+    } else {
+      alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
+    }
   } else {
-    alert("Vui lòng nhập họ tên chính xác của bạn.");
+    alert("Vui lòng nhập mã nhân viên của bạn.");
   }
 }
 
@@ -60,15 +69,15 @@ function closeLoginModal() {
   document.getElementById('login-modal').style.display = 'none';
 }
 
-function setOneSignalTag(name) {
+function setOneSignalTag(code) {
   window.OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.User.addTag("employee_name", name).then(() => {
-      console.log("OneSignal tag updated:", name);
+    OneSignal.User.addTag("employee_code", code).then(() => {
+      console.log("OneSignal tag updated:", code);
     });
     
-    // Set External ID để hiển thị tên user trên OneSignal Dashboard
-    OneSignal.login(name).then(() => {
-      console.log("OneSignal logged in with external ID:", name);
+    // Set External ID để hiển thị mã user trên OneSignal Dashboard
+    OneSignal.login(code).then(() => {
+      console.log("OneSignal logged in with external ID:", code);
     }).catch(err => {
       console.error("OneSignal login error:", err);
     });
@@ -81,6 +90,8 @@ async function fetchInitialData() {
     if (!response.ok) throw new Error('Network response was not ok');
     const initData = await response.json();
     if (initData.error) throw new Error(initData.error);
+    
+    globalEmployeeMapping = initData.employeeMapping || {};
     initDropdown(initData);
   } catch (error) {
     onFailure(error);
