@@ -19,26 +19,13 @@ window.onload = function () {
       .catch(err => console.error('Service Worker registration failed', err));
   }
 
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installBanner = document.getElementById('install-banner');
-    if (installBanner) {
-      installBanner.style.display = 'block';
-    }
-  });
-
   checkLogin();
   fetchInitialData();
 };
 
 function checkLogin() {
   const savedName = localStorage.getItem('employeeName');
-  if (!savedName) {
-    setTimeout(() => {
-      document.getElementById('login-modal').style.display = 'flex';
-    }, 2000); // Hiện popup sau 2 giây
-  } else {
+  if (savedName) {
     setOneSignalTag(savedName);
   }
 }
@@ -77,22 +64,6 @@ function setOneSignalTag(name) {
       console.log("OneSignal tag updated:", name);
     });
   });
-}
-
-function installPWA() {
-  const installBanner = document.getElementById('install-banner');
-  installBanner.style.display = 'none';
-  if (deferredPrompt) {
-    deferredPrompt.prompt();
-    deferredPrompt.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
-      }
-      deferredPrompt = null;
-    });
-  }
 }
 
 async function fetchInitialData() {
