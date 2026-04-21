@@ -79,12 +79,17 @@ function saveEmployeeCode() {
   // iOS bắt buộc phải gọi trong context của button click
   if (window.OneSignal && window.OneSignal.Notifications) {
     window.OneSignal.Notifications.requestPermission().then(function() {
-      // OneSignal v16: requestPermission() trả về void, KHÔNG phải boolean
-      // Phải kiểm tra quyền thực tế qua .permission
       const hasPermission = window.OneSignal.Notifications.permission;
       if (hasPermission) {
-        setOneSignalTag(codeInput);
-        alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
+        // Bước quan trọng: Sau khi có quyền, phải gọi optIn() để tạo Push Subscription thật sự
+        window.OneSignal.User.PushSubscription.optIn().then(function() {
+          setOneSignalTag(codeInput);
+          alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
+        }).catch(function(e) {
+          // Vẫn thử gắn tag dù optIn lỗi
+          setOneSignalTag(codeInput);
+          alert("✅ Xin chào: " + name + "\n⚠️ Lỗi optIn: " + e);
+        });
       } else {
         alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt.");
       }
