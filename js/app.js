@@ -72,11 +72,13 @@ function saveEmployeeCode() {
   // Gọi requestPermission TRỰC TIẾP ngay trong user gesture (KHÔNG qua Deferred)
   // iOS bắt buộc phải gọi trong context của button click
   if (window.OneSignal && window.OneSignal.Notifications) {
-    window.OneSignal.Notifications.requestPermission().then(function(accepted) {
-      if (accepted) {
-        alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
-        // Sau khi có quyền rồi mới gắn tag và login
+    window.OneSignal.Notifications.requestPermission().then(function() {
+      // OneSignal v16: requestPermission() trả về void, KHÔNG phải boolean
+      // Phải kiểm tra quyền thực tế qua .permission
+      const hasPermission = window.OneSignal.Notifications.permission;
+      if (hasPermission) {
         setOneSignalTag(codeInput);
+        alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
       } else {
         alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt.");
       }
