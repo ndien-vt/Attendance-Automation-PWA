@@ -49,6 +49,15 @@ function forceLogin() {
 }
 
 function saveEmployeeCode() {
+  // Kiểm tra iOS Standalone Mode - bắt buộc để push notification hoạt động
+  const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent);
+  const isStandalone = window.navigator.standalone === true;
+  
+  if (isIOS && !isStandalone) {
+    alert("⚠️ QUAN TRỌNG!\n\nBạn đang mở ứng dụng trong Safari browser thông thường.\n\nĐể nhận thông báo, bạn PHẢI:\n1. Bấm nút Share (ô vuông với mũi tên lên)\n2. Chọn 'Add to Home Screen'\n3. ĐÓNG Safari lại\n4. Mở app từ icon trên Màn hình chính (KHÔNG mở Safari)");
+    return;
+  }
+  
   const codeInput = document.getElementById('employee-code-input').value.trim();
   if (!codeInput) {
     alert("Vui lòng nhập mã nhân viên của bạn.");
