@@ -53,28 +53,38 @@ function forceLogin() {
 
 function saveEmployeeCode() {
   const codeInput = document.getElementById('employee-code-input').value.trim();
-  if (codeInput) {
-    const name = globalEmployeeMapping[codeInput];
-    if (name) {
-      alert("Đăng ký thành công!\nXin chào: " + name);
-      localStorage.setItem('employeeCode', codeInput);
-      localStorage.setItem('employeeName', name);
-      document.getElementById('login-modal').style.display = 'none';
-      setOneSignalTag(codeInput);
-      
-      // Yêu cầu quyền thông báo ngay khi lưu (chỉ hiển thị nếu người dùng chưa từng cho phép)
-      window.OneSignalDeferred.push(function(OneSignal) {
-        try {
-          OneSignal.Notifications.requestPermission().catch(e => alert("Lỗi xin quyền: " + e));
-        } catch(e) {
-          alert("Lỗi gọi quyền: " + e.message);
-        }
-      });
-    } else {
-      alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
-    }
-  } else {
+  if (!codeInput) {
     alert("Vui lòng nhập mã nhân viên của bạn.");
+    return;
+  }
+  
+  const name = globalEmployeeMapping[codeInput];
+  if (!name) {
+    alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
+    return;
+  }
+  
+  // Lưu thông tin
+  localStorage.setItem('employeeCode', codeInput);
+  localStorage.setItem('employeeName', name);
+  document.getElementById('login-modal').style.display = 'none';
+  
+  // Gọi requestPermission TRỰC TIẾP ngay trong user gesture (KHÔNG qua Deferred)
+  // iOS bắt buộc phải gọi trong context của button click
+  if (window.OneSignal && window.OneSignal.Notifications) {
+    window.OneSignal.Notifications.requestPermission().then(function(accepted) {
+      if (accepted) {
+        alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
+        // Sau khi có quyền rồi mới gắn tag và login
+        setOneSignalTag(codeInput);
+      } else {
+        alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt.");
+      }
+    }).catch(function(e) {
+      alert("Lỗi xin quyền: " + e);
+    });
+  } else {
+    alert("OneSignal chưa sẵn sàng, thử lại sau vài giây.");
   }
 }
 
