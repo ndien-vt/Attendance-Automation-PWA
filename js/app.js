@@ -5,17 +5,11 @@ const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
-  // Tự động tính toán đường dẫn an toàn
-  let basePath = window.location.pathname;
-  if (!basePath.endsWith('/')) {
-    if (basePath.includes('.html')) basePath = basePath.substring(0, basePath.lastIndexOf('/') + 1);
-    else basePath += '/';
-  }
-  
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
-    serviceWorkerParam: { scope: basePath },
-    serviceWorkerPath: basePath + "OneSignalSDKWorker.js"
+    // Dùng relative path để tránh lỗi "Script origin does not match" trên iOS Standalone
+    serviceWorkerParam: { scope: "./" },
+    serviceWorkerPath: "OneSignalSDKWorker.js"
   }).catch(e => {
     alert("Lỗi khởi tạo OneSignal: " + e);
   });
