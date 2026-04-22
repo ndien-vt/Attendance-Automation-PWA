@@ -74,30 +74,35 @@ function saveEmployeeCode() {
   localStorage.setItem('employeeName', name);
   document.getElementById('login-modal').style.display = 'none';
   
-  // Gọi optIn() TRỰC TIẾP trong user gesture — nó tự xử lý cả requestPermission lẫn subscribe
-  // KHÔNG tách requestPermission() riêng — tránh iOS hiểu nhầm là 2 gesture khác nhau
+  // Gọi optIn() trong user gesture
   if (window.OneSignal && window.OneSignal.User) {
     window.OneSignal.User.PushSubscription.optIn().then(function() {
       setOneSignalTag(codeInput);
-      // Delay 1.5s để iOS kịp cấp push token trước khi đọc trạng thái
-      setTimeout(function() {
-        const token = window.OneSignal.User.PushSubscription.token;
-        const optedIn = window.OneSignal.User.PushSubscription.optedIn;
-        const nativePerm = (typeof Notification !== 'undefined') ? Notification.permission : 'N/A';
-        if (optedIn && token) {
-          alert("✅ Đăng ký thành công! Xin chào: " + name + "\nThông báo đã được bật!");
-        } else {
-          // Hiện debug để xác định chính xác vấn đề
-          alert("⚠️ Xin chào: " + name +
-                "\n[DEBUG] optedIn=" + optedIn +
-                " | token=" + (token ? "YES" : "NONE") +
-                " | perm=" + nativePerm +
-                "\nScope SW: " + SW_BASE_PATH);
-        }
-      }, 1500);
+      // Kiểm tra SW registrations SAU khi optIn để debug token=NONE
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        setTimeout(function() {
+          const token = window.OneSignal.User.PushSubscription.token;
+          const optedIn = window.OneSignal.User.PushSubscription.optedIn;
+          // Tóm tắt các SW đang active
+          const swInfo = regs.length === 0
+            ? 'NONE'
+            : regs.map(function(r) {
+                const scope = r.scope.replace('https://ndien-vt.github.io', '');
+                const state = r.active ? r.active.state : 'no-active';
+                return scope + '[' + state + ']';
+              }).join(' | ');
+          if (optedIn && token) {
+            alert("✅ Thành công! Xin chào: " + name + "\nThông báo đã bật!");
+          } else {
+            alert("⚠️ Xin chào: " + name +
+                  "\noptedIn=" + optedIn + " | token=" + (token ? "YES" : "NONE") +
+                  "\nSW (" + regs.length + "): " + swInfo);
+          }
+        }, 3000); // 3s để iOS kịp nhận token từ APNs
+      });
     }).catch(function(e) {
       setOneSignalTag(codeInput);
-      alert("⚠️ Xin chào: " + name + "\nLỗi optIn: " + e);
+      alert("⚠️ Lỗi optIn: " + e);
     });
   } else {
     alert("OneSignal chưa sẵn sàng, thử lại sau vài giây.");
