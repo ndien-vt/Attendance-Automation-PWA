@@ -7,16 +7,32 @@ const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 // ⚠️ Nếu đổi tên repo thì cập nhật biến này
 const SW_BASE_PATH = '/Attendance-Automation-PWA/';
 
+// Đăng ký SW thủ công TRƯỚC để iOS chấp nhận
+// OneSignal.init() sau đó sẽ tìm thấy SW đã có và dùng nó
+let swRegistrationPromise = Promise.resolve(null);
+if ('serviceWorker' in navigator) {
+  swRegistrationPromise = navigator.serviceWorker.register('./OneSignalSDKWorker.js')
+    .then(function(reg) {
+      console.log('[SW] Registered OK, scope:', reg.scope);
+      return reg;
+    })
+    .catch(function(err) {
+      console.error('[SW] Registration FAILED:', err);
+      return null;
+    });
+}
+
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
-  OneSignal.init({
-    appId: ONESIGNAL_APP_ID,
-    serviceWorkerParam: { scope: SW_BASE_PATH },
-    serviceWorkerPath: SW_BASE_PATH + 'OneSignalSDKWorker.js'
-  }).then(function() {
-    console.log('OneSignal init OK, scope:', SW_BASE_PATH);
-  }).catch(e => {
-    alert('Lỗi OneSignal init: ' + e);
+  swRegistrationPromise.then(function() {
+    OneSignal.init({
+      appId: ONESIGNAL_APP_ID,
+      // Không truyền serviceWorkerParam — OneSignal tự tìm SW đã đăng ký
+    }).then(function() {
+      console.log('[OneSignal] init OK');
+    }).catch(function(e) {
+      alert('Lỗi OneSignal init: ' + e);
+    });
   });
 });
 
