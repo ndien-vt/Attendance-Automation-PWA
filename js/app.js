@@ -3,14 +3,20 @@ const API_URL = "https://script.google.com/macros/s/AKfycbwIDaUlFyMie7b2gd0bSIyY
 // THAY THẾ BẰNG ONESIGNAL APP ID CỦA BẠN
 const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 
+// Đường dẫn tuyệt đối của repo trên GitHub Pages
+// ⚠️ Nếu đổi tên repo thì cập nhật biến này
+const SW_BASE_PATH = '/Attendance-Automation-PWA/';
+
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
-    // Không truyền serviceWorkerParam/serviceWorkerPath để OneSignal tự detect
-    // Tránh scope mismatch trên GitHub Pages subdirectory
+    serviceWorkerParam: { scope: SW_BASE_PATH },
+    serviceWorkerPath: SW_BASE_PATH + 'OneSignalSDKWorker.js'
+  }).then(function() {
+    console.log('OneSignal init OK, scope:', SW_BASE_PATH);
   }).catch(e => {
-    console.error("Lỗi khởi tạo OneSignal: " + e);
+    alert('Lỗi OneSignal init: ' + e);
   });
 });
 
@@ -68,35 +74,30 @@ function saveEmployeeCode() {
   localStorage.setItem('employeeName', name);
   document.getElementById('login-modal').style.display = 'none';
   
-  // Gọi requestPermission TRỰC TIẾP ngay trong user gesture (KHÔNG qua Deferred)
-  // iOS bắt buộc phải gọi trong context của button click
-  if (window.OneSignal && window.OneSignal.Notifications) {
-    // Gọi requestPermission trực tiếp trong user gesture (bắt buộc với iOS)
-    window.OneSignal.Notifications.requestPermission().then(function() {
-      const hasPermission = window.OneSignal.Notifications.permission;
-      if (hasPermission) {
-        // Gọi optIn() trực tiếp — OneSignal tự quản lý SW của nó
-        // KHÔNG dùng navigator.serviceWorker.ready vì đó là sw.js, không phải OneSignalSDKWorker
-        window.OneSignal.User.PushSubscription.optIn().then(function() {
-          setOneSignalTag(codeInput);
-          const token = window.OneSignal.User.PushSubscription.token;
-          if (token) {
-            alert("✅ Đăng ký thành công! Xin chào: " + name + "\nThông báo đã được bật!");
-          } else {
-            // Token chưa có ngay — bình thường, iOS cần vài giây
-            setOneSignalTag(codeInput);
-            alert("✅ Xin chào: " + name + "\nĐăng ký xong! Thông báo sẽ hoạt động sau vài giây.");
-          }
-        }).catch(function(e) {
-          // optIn thất bại — vẫn lưu tag để retry sau
-          setOneSignalTag(codeInput);
-          alert("⚠️ Xin chào: " + name + "\nĐã lưu mã. Thông báo chưa bật được (" + e + ")");
-        });
-      } else {
-        alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt > App.");
-      }
+  // Gọi optIn() TRỰC TIẾP trong user gesture — nó tự xử lý cả requestPermission lẫn subscribe
+  // KHÔNG tách requestPermission() riêng — tránh iOS hiểu nhầm là 2 gesture khác nhau
+  if (window.OneSignal && window.OneSignal.User) {
+    window.OneSignal.User.PushSubscription.optIn().then(function() {
+      setOneSignalTag(codeInput);
+      // Delay 1.5s để iOS kịp cấp push token trước khi đọc trạng thái
+      setTimeout(function() {
+        const token = window.OneSignal.User.PushSubscription.token;
+        const optedIn = window.OneSignal.User.PushSubscription.optedIn;
+        const nativePerm = (typeof Notification !== 'undefined') ? Notification.permission : 'N/A';
+        if (optedIn && token) {
+          alert("✅ Đăng ký thành công! Xin chào: " + name + "\nThông báo đã được bật!");
+        } else {
+          // Hiện debug để xác định chính xác vấn đề
+          alert("⚠️ Xin chào: " + name +
+                "\n[DEBUG] optedIn=" + optedIn +
+                " | token=" + (token ? "YES" : "NONE") +
+                " | perm=" + nativePerm +
+                "\nScope SW: " + SW_BASE_PATH);
+        }
+      }, 1500);
     }).catch(function(e) {
-      alert("Lỗi xin quyền: " + e);
+      setOneSignalTag(codeInput);
+      alert("⚠️ Xin chào: " + name + "\nLỗi optIn: " + e);
     });
   } else {
     alert("OneSignal chưa sẵn sàng, thử lại sau vài giây.");
