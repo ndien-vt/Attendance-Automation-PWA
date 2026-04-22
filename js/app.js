@@ -204,7 +204,7 @@ async function loadSelectedMonth() {
   document.getElementById('content').style.display = 'none';
 
   const selectedSheet = document.getElementById('month-selector').value;
-  document.title = "Lịch Làm Việc " + selectedSheet;
+  document.title = "Lịch Làm Việc 2026";
 
   try {
     const response = await fetch(`${API_URL}?action=getScheduleDataForWeb&sheetName=${encodeURIComponent(selectedSheet)}`);
