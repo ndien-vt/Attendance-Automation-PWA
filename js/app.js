@@ -60,6 +60,17 @@ function checkLogin() {
   const savedCode = localStorage.getItem('employeeCode');
   if (savedCode) {
     setOneSignalTag(savedCode);
+    updateLoginUI(savedCode);
+  }
+}
+
+function updateLoginUI(code) {
+  const registerBtn = document.getElementById('registerBtn');
+  const employeeBadge = document.getElementById('employeeBadge');
+  if (registerBtn && employeeBadge) {
+    registerBtn.style.display = 'none';
+    employeeBadge.style.display = 'inline-block';
+    employeeBadge.textContent = "👤 " + code;
   }
 }
 
@@ -97,6 +108,7 @@ function saveEmployeeCode() {
   localStorage.setItem('employeeCode', codeInput);
   localStorage.setItem('employeeName', name);
   document.getElementById('login-modal').style.display = 'none';
+  updateLoginUI(codeInput);
   
   // Gọi optIn() trong user gesture
   if (window.OneSignal && window.OneSignal.User) {
