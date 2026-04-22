@@ -7,11 +7,10 @@ window.OneSignalDeferred = window.OneSignalDeferred || [];
 OneSignalDeferred.push(function(OneSignal) {
   OneSignal.init({
     appId: ONESIGNAL_APP_ID,
-    // Dùng relative path để tránh lỗi "Script origin does not match" trên iOS Standalone
-    serviceWorkerParam: { scope: "./" },
-    serviceWorkerPath: "OneSignalSDKWorker.js"
+    // Không truyền serviceWorkerParam/serviceWorkerPath để OneSignal tự detect
+    // Tránh scope mismatch trên GitHub Pages subdirectory
   }).catch(e => {
-    alert("Lỗi khởi tạo OneSignal: " + e);
+    console.error("Lỗi khởi tạo OneSignal: " + e);
   });
 });
 
@@ -72,20 +71,29 @@ function saveEmployeeCode() {
   // Gọi requestPermission TRỰC TIẾP ngay trong user gesture (KHÔNG qua Deferred)
   // iOS bắt buộc phải gọi trong context của button click
   if (window.OneSignal && window.OneSignal.Notifications) {
+    // Gọi requestPermission trực tiếp trong user gesture (bắt buộc với iOS)
     window.OneSignal.Notifications.requestPermission().then(function() {
       const hasPermission = window.OneSignal.Notifications.permission;
       if (hasPermission) {
-        // Bước quan trọng: Sau khi có quyền, phải gọi optIn() để tạo Push Subscription thật sự
+        // Gọi optIn() trực tiếp — OneSignal tự quản lý SW của nó
+        // KHÔNG dùng navigator.serviceWorker.ready vì đó là sw.js, không phải OneSignalSDKWorker
         window.OneSignal.User.PushSubscription.optIn().then(function() {
           setOneSignalTag(codeInput);
-          alert("✅ Đăng ký thành công!\nXin chào: " + name + "\nThông báo đã được bật!");
+          const token = window.OneSignal.User.PushSubscription.token;
+          if (token) {
+            alert("✅ Đăng ký thành công! Xin chào: " + name + "\nThông báo đã được bật!");
+          } else {
+            // Token chưa có ngay — bình thường, iOS cần vài giây
+            setOneSignalTag(codeInput);
+            alert("✅ Xin chào: " + name + "\nĐăng ký xong! Thông báo sẽ hoạt động sau vài giây.");
+          }
         }).catch(function(e) {
-          // Vẫn thử gắn tag dù optIn lỗi
+          // optIn thất bại — vẫn lưu tag để retry sau
           setOneSignalTag(codeInput);
-          alert("✅ Xin chào: " + name + "\n⚠️ Lỗi optIn: " + e);
+          alert("⚠️ Xin chào: " + name + "\nĐã lưu mã. Thông báo chưa bật được (" + e + ")");
         });
       } else {
-        alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt.");
+        alert("⚠️ Xin chào: " + name + "\nBạn chưa cho phép thông báo. Vui lòng bật trong Cài đặt > App.");
       }
     }).catch(function(e) {
       alert("Lỗi xin quyền: " + e);

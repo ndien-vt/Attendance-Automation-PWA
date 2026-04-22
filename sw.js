@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lich-lam-viec-v17';
+const CACHE_NAME = 'lich-lam-viec-v19';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -74,17 +74,6 @@ self.addEventListener('fetch', event => {
   }
 });
 
-// Setup for push notifications in the future
-self.addEventListener('push', function(event) {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'Bạn có thông báo mới',
-      icon: './images/icon-192x192.png',
-      badge: './images/icon-192x192.png'
-    };
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Thông báo lịch làm việc', options)
-    );
-  }
-});
+// Push event KHÔNG xử lý ở đây
+// OneSignalSDKWorker.js đã lo toàn bộ việc nhận và hiển thị push notification
+// sw.js chỉ lo cache offline cho static assets
