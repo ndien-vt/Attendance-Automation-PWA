@@ -5,36 +5,44 @@ const ONESIGNAL_APP_ID = "9d15f9fd-00f2-411e-80fa-f3a24f6b4d2b";
 
 // Đường dẫn tuyệt đối của repo trên GitHub Pages
 // ⚠️ Nếu đổi tên repo thì cập nhật biến này
-const SW_BASE_PATH = '/Attendance-Automation-PWA/';
+const SW_SCOPE = '/Attendance-Automation-PWA/';
+// serviceWorkerPath KHÔNG có / ở đầu (theo tài liệu OneSignal chính thức)
+const SW_PATH = 'Attendance-Automation-PWA/OneSignalSDKWorker.js';
 
-// Đăng ký SW thủ công TRƯỚC để iOS chấp nhận
-// OneSignal.init() sau đó sẽ tìm thấy SW đã có và dùng nó
-let swRegistrationPromise = Promise.resolve(null);
+// Bước 1: Đăng ký SW thủ công (iOS không cho OneSignal tự đăng ký)
+// Bước 2: Chờ SW active
+// Bước 3: Init OneSignal với đường dẫn SW chính xác
 if ('serviceWorker' in navigator) {
-  swRegistrationPromise = navigator.serviceWorker.register('./OneSignalSDKWorker.js')
+  navigator.serviceWorker.register('./OneSignalSDKWorker.js')
     .then(function(reg) {
-      console.log('[SW] Registered OK, scope:', reg.scope);
-      return reg;
+      console.log('[SW] Registered, scope:', reg.scope);
+      return navigator.serviceWorker.ready;
+    })
+    .then(function(reg) {
+      console.log('[SW] Active and ready, state:', reg.active.state);
+      // Bây giờ mới init OneSignal — SW đã sẵn sàng
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.init({
+          appId: ONESIGNAL_APP_ID,
+          serviceWorkerParam: { scope: SW_SCOPE },
+          serviceWorkerPath: SW_PATH
+        }).then(function() {
+          console.log('[OneSignal] init OK');
+        }).catch(function(e) {
+          alert('Lỗi OneSignal init: ' + e);
+        });
+      });
     })
     .catch(function(err) {
-      console.error('[SW] Registration FAILED:', err);
-      return null;
+      alert('[SW] Registration failed: ' + err);
     });
-}
-
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(function(OneSignal) {
-  swRegistrationPromise.then(function() {
-    OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      // Không truyền serviceWorkerParam — OneSignal tự tìm SW đã đăng ký
-    }).then(function() {
-      console.log('[OneSignal] init OK');
-    }).catch(function(e) {
-      alert('Lỗi OneSignal init: ' + e);
-    });
+} else {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.init({ appId: ONESIGNAL_APP_ID });
   });
-});
+}
 
 let deferredPrompt;
 
