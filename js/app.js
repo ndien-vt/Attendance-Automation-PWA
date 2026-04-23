@@ -54,6 +54,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
   checkLogin();
   fetchInitialData();
+  
+  // Tự động lấy version cache từ sw.js để cập nhật footer
+  fetch('./sw.js', { cache: 'no-store' })
+    .then(res => res.text())
+    .then(text => {
+      const match = text.match(/lich-lam-viec-v(\d+)/);
+      if (match && document.getElementById('app-version')) {
+        document.getElementById('app-version').textContent = match[1];
+      }
+    })
+    .catch(err => console.log("Không lấy được version:", err));
 });
 
 function checkLogin() {
