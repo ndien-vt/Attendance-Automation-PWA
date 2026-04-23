@@ -12,16 +12,13 @@ const SW_PATH = 'Attendance-Automation-PWA/OneSignalSDKWorker.js';
 // Bước 1: Đăng ký SW thủ công (iOS không cho OneSignal tự đăng ký)
 // Bước 2: Chờ SW active
 // Bước 3: Init OneSignal với đường dẫn SW chính xác
+// Đăng ký SW và init OneSignal — KHÔNG chờ .ready vì gây hang trên iOS Standalone
+window.OneSignalDeferred = window.OneSignalDeferred || [];
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./OneSignalSDKWorker.js')
     .then(function(reg) {
       console.log('[SW] Registered, scope:', reg.scope);
-      return navigator.serviceWorker.ready;
-    })
-    .then(function(reg) {
-      console.log('[SW] Active and ready, state:', reg.active.state);
-      // Bây giờ mới init OneSignal — SW đã sẵn sàng
-      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      // Init OneSignal ngay sau khi register — không cần chờ .ready
       OneSignalDeferred.push(function(OneSignal) {
         OneSignal.init({
           appId: ONESIGNAL_APP_ID,
@@ -30,15 +27,18 @@ if ('serviceWorker' in navigator) {
         }).then(function() {
           console.log('[OneSignal] init OK');
         }).catch(function(e) {
-          alert('Lỗi OneSignal init: ' + e);
+          console.warn('OneSignal init error:', e);
         });
       });
     })
     .catch(function(err) {
-      alert('[SW] Registration failed: ' + err);
+      console.warn('[SW] Registration failed:', err);
+      // Vẫn init OneSignal dù SW thất bại
+      OneSignalDeferred.push(function(OneSignal) {
+        OneSignal.init({ appId: ONESIGNAL_APP_ID });
+      });
     });
 } else {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.init({ appId: ONESIGNAL_APP_ID });
   });
@@ -168,35 +168,51 @@ function setOneSignalTag(code) {
 }
 
 async function fetchInitialData() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s timeout cho lần đầu (gộp 2 API)
   try {
-    const response = await fetch(`${API_URL}?action=getInitialWebData`);
+    const response = await fetch(`${API_URL}?action=getFullData`, {
+      signal: controller.signal,
+      cache: 'no-store'
+    });
+    clearTimeout(timeoutId);
     if (!response.ok) throw new Error('Network response was not ok');
-    const initData = await response.json();
-    if (initData.error) throw new Error(initData.error);
+    const data = await response.json();
+    if (data.error) throw new Error(data.error);
     
-    globalEmployeeMapping = initData.employeeMapping || {};
-    initDropdown(initData);
+    globalEmployeeMapping = data.employeeMapping || {};
+    initDropdown(data);   // data.schedule đã có sẵn, không cần gọi API lần 2
   } catch (error) {
-    onFailure(error);
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      onFailure(new Error('Timeout: Không kết nối được server sau 20 giây. Vui lòng thử lại.'));
+    } else {
+      onFailure(error);
+    }
   }
 }
 
-function initDropdown(initData) {
+function initDropdown(data) {
   const selector = document.getElementById('month-selector');
-  selector.innerHTML = ''; // Clear existing
+  selector.innerHTML = '';
 
-  initData.sheetNames.forEach(name => {
+  data.sheetNames.forEach(name => {
     let option = document.createElement('option');
     option.value = name;
     option.textContent = "LỊCH LÀM VIỆC " + name;
     selector.appendChild(option);
   });
 
-  if (initData.defaultSheet) {
-    selector.value = initData.defaultSheet;
+  if (data.defaultSheet) {
+    selector.value = data.defaultSheet;
   }
 
-  loadSelectedMonth();
+  // Dữ liệu lịch đã được gộp sẵn trong API — render ngay, không cần gọi API lần 2
+  if (data.schedule) {
+    renderTable(data.schedule);
+  } else {
+    loadSelectedMonth(); // Fallback nếu server cũ chưa hỗ trợ getFullData
+  }
 }
 
 async function loadSelectedMonth() {
@@ -206,13 +222,27 @@ async function loadSelectedMonth() {
   const selectedSheet = document.getElementById('month-selector').value;
   document.title = "Lịch Làm Việc 2026";
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
   try {
-    const response = await fetch(`${API_URL}?action=getScheduleDataForWeb&sheetName=${encodeURIComponent(selectedSheet)}`);
+    const response = await fetch(
+      `${API_URL}?action=getScheduleDataForWeb&sheetName=${encodeURIComponent(selectedSheet)}`,
+      {
+        signal: controller.signal,
+        cache: 'no-store'  // Bypass SW cache — luôn lấy lịch mới nhất
+      }
+    );
+    clearTimeout(timeoutId);
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
     renderTable(data);
   } catch (error) {
-    onFailure(error);
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      onFailure(new Error('Timeout: Không tải được lịch sau 15 giây. Vui lòng thử lại.'));
+    } else {
+      onFailure(error);
+    }
   }
 }
 
