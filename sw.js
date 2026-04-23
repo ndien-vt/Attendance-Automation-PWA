@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lich-lam-viec-v27';
+const CACHE_NAME = 'lich-lam-viec-v28';
 const STATIC_ASSETS = [
   './',
   './index.html',
