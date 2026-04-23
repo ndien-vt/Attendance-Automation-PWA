@@ -48,13 +48,13 @@ let deferredPrompt;
 
 let globalEmployeeMapping = {};
 
-window.onload = function () {
+document.addEventListener('DOMContentLoaded', function () {
   // Không đăng ký sw.js riêng lẻ vì OneSignal đã quản lý Service Worker
   // Đăng ký 2 SW cùng scope sẽ xung đột và phá vỡ Push Token
 
   checkLogin();
   fetchInitialData();
-};
+});
 
 function checkLogin() {
   const savedCode = localStorage.getItem('employeeCode');
@@ -159,10 +159,10 @@ function setOneSignalTag(code) {
       OneSignal.login(code).then(() => {
         console.log("OneSignal logged in with external ID:", code);
       }).catch(err => {
-        alert("Lỗi Login: " + err);
+        console.warn("OneSignal login warning:", err);
       });
     } catch(e) {
-      alert("Lỗi OneSignal Catch: " + e.message);
+      console.warn("OneSignal Catch warning:", e.message);
     }
   });
 }
