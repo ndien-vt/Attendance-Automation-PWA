@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
   fetch('./sw.js', { cache: 'no-store' })
     .then(res => res.text())
     .then(text => {
-      const match = text.match(/lich-lam-viec-v(\d+)/);
+      const match = text.match(/lich-lam-viec-v([\d\.]+)/);
       if (match && document.getElementById('app-version')) {
         document.getElementById('app-version').textContent = match[1];
       }
@@ -143,11 +143,11 @@ function applyUserRole(role, code) {
   } else {
     document.body.classList.remove('admin-mode');
     document.getElementById('admin-toolbar').style.display = 'none';
+  }
 
-    if (role === 'User') {
-      optInOneSignal(code);
-      autoConfirmPending(code);
-    }
+  if (role !== 'Guest') {
+    optInOneSignal(code);
+    autoConfirmPending(code);
   }
 }
 

@@ -130,8 +130,7 @@ html, body {
 
 /* S1+4 and S3+4 Styles */
 .cell-s14, .cell-s34 {
-  background-color: #fff3cd !important;
-  color: #856404 !important;
-  font-weight: bold !important;
-  border: 1px solid #ffeeba !important;
+  background-color: #ffff00 !important;
+  color: black !important;
+  font-weight: normal !important;
 }
