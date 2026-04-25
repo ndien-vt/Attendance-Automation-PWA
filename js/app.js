@@ -156,13 +156,15 @@ function optInOneSignal(code) {
   const isStandalone = window.navigator.standalone === true;
   if (isIOS && !isStandalone) return;
 
-  if (window.OneSignal && window.OneSignal.User) {
-    window.OneSignal.User.PushSubscription.optIn().then(function () {
-      setOneSignalTag(code);
-    }).catch(function (e) {
-      setOneSignalTag(code);
-    });
-  }
+  // Luôn gắn thẻ và login vào OneSignal ngay cả khi chưa bấm optIn
+  // Điều này đảm bảo external_id được nhận diện
+  setOneSignalTag(code);
+
+  window.OneSignalDeferred.push(function (OneSignal) {
+    if (OneSignal.User && OneSignal.User.PushSubscription) {
+      OneSignal.User.PushSubscription.optIn().catch(e => console.warn("Auto optIn blocked or ignored:", e));
+    }
+  });
 }
 
 async function autoConfirmPending(code) {
@@ -426,7 +428,8 @@ function renderTable(data) {
     tbody.appendChild(tr);
   });
 
-  document.getElementById('updateTime').textContent = "Cập nhật: " + data.updateTime;
+  let shortTime = data.updateTime ? data.updateTime.replace(/\/\d{4}$/, "") : "";
+  document.getElementById('updateTime').textContent = "Cập nhật: " + shortTime;
   document.getElementById('loader-container').style.display = 'none';
   document.getElementById('content').style.display = 'flex';
 }
