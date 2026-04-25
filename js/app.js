@@ -16,30 +16,30 @@ const SW_PATH = 'Attendance-Automation-PWA/OneSignalSDKWorker.js';
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./OneSignalSDKWorker.js')
-    .then(function(reg) {
+    .then(function (reg) {
       console.log('[SW] Registered, scope:', reg.scope);
       // Init OneSignal ngay sau khi register — không cần chờ .ready
-      OneSignalDeferred.push(function(OneSignal) {
+      OneSignalDeferred.push(function (OneSignal) {
         OneSignal.init({
           appId: ONESIGNAL_APP_ID,
           serviceWorkerParam: { scope: SW_SCOPE },
           serviceWorkerPath: SW_PATH
-        }).then(function() {
+        }).then(function () {
           console.log('[OneSignal] init OK');
-        }).catch(function(e) {
+        }).catch(function (e) {
           console.warn('OneSignal init error:', e);
         });
       });
     })
-    .catch(function(err) {
+    .catch(function (err) {
       console.warn('[SW] Registration failed:', err);
       // Vẫn init OneSignal dù SW thất bại
-      OneSignalDeferred.push(function(OneSignal) {
+      OneSignalDeferred.push(function (OneSignal) {
         OneSignal.init({ appId: ONESIGNAL_APP_ID });
       });
     });
 } else {
-  OneSignalDeferred.push(function(OneSignal) {
+  OneSignalDeferred.push(function (OneSignal) {
     OneSignal.init({ appId: ONESIGNAL_APP_ID });
   });
 }
@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   checkLogin();
   fetchInitialData();
-  
+
   // Tự động lấy version cache từ sw.js để cập nhật footer
   fetch('./sw.js', { cache: 'no-store' })
     .then(res => res.text())
@@ -67,15 +67,68 @@ document.addEventListener('DOMContentLoaded', function () {
     .catch(err => console.log("Không lấy được version:", err));
 });
 
+let currentRole = 'Guest';
+let isEditMode = false;
+let editedShifts = [];
+let targetEditCell = null;
+
 function checkLogin() {
   const savedCode = localStorage.getItem('employeeCode');
+  const role = localStorage.getItem('role') || 'Guest';
   if (savedCode) {
-    setOneSignalTag(savedCode);
-    updateLoginUI(savedCode);
+    applyUserRole(role, savedCode);
   }
 }
 
-function updateLoginUI(code) {
+function handleGoogleLoginClick() {
+  google.accounts.id.initialize({
+    client_id: "409153971811-utghb2hjc9dfn17lmed043mk66ep6ojl.apps.googleusercontent.com", // TODO: Thay bằng Client ID thật
+    callback: handleCredentialResponse
+  });
+  google.accounts.id.prompt();
+}
+
+function handleCredentialResponse(response) {
+  const responsePayload = decodeJwtResponse(response.credential);
+  const email = responsePayload.email;
+  verifyGoogleLogin(email);
+}
+
+function decodeJwtResponse(token) {
+  var base64Url = token.split('.')[1];
+  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  var jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+  }).join(''));
+  return JSON.parse(jsonPayload);
+}
+
+async function verifyGoogleLogin(email) {
+  document.getElementById('loader-container').style.display = 'flex';
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'verifyGoogleLogin', email: email })
+    });
+    const data = await res.json();
+    if (data.success) {
+      localStorage.setItem('employeeCode', data.code);
+      localStorage.setItem('employeeName', data.name);
+      localStorage.setItem('role', data.role);
+      applyUserRole(data.role, data.code);
+      alert("Đăng nhập thành công! Xin chào " + data.name);
+    } else {
+      alert("Lỗi: " + data.error);
+    }
+  } catch (err) {
+    alert("Lỗi kết nối: " + err);
+  }
+  document.getElementById('loader-container').style.display = 'none';
+}
+
+function applyUserRole(role, code) {
+  currentRole = role;
+
   const registerBtn = document.getElementById('registerBtn');
   const employeeBadge = document.getElementById('employeeBadge');
   if (registerBtn && employeeBadge) {
@@ -83,96 +136,152 @@ function updateLoginUI(code) {
     employeeBadge.style.display = 'inline-block';
     employeeBadge.textContent = "👤 " + code;
   }
-}
 
-function forceLogin() {
-  const savedCode = localStorage.getItem('employeeCode');
-  if (savedCode) {
-    document.getElementById('employee-code-input').value = savedCode;
+  if (role === 'Admin') {
+    document.body.classList.add('admin-mode');
+    document.getElementById('admin-toolbar').style.display = 'flex';
+  } else {
+    document.body.classList.remove('admin-mode');
+    document.getElementById('admin-toolbar').style.display = 'none';
+
+    if (role === 'User') {
+      optInOneSignal(code);
+      autoConfirmPending(code);
+    }
   }
-  document.getElementById('login-modal').style.display = 'flex';
 }
 
-function saveEmployeeCode() {
-  // Kiểm tra iOS Standalone Mode - bắt buộc để push notification hoạt động
+function optInOneSignal(code) {
   const isIOS = /iP(ad|hone|od)/i.test(navigator.userAgent);
   const isStandalone = window.navigator.standalone === true;
-  
-  if (isIOS && !isStandalone) {
-    alert("⚠️ QUAN TRỌNG!\n\nBạn đang mở ứng dụng trong Safari browser thông thường.\n\nĐể nhận thông báo, bạn PHẢI:\n1. Bấm nút Share (ô vuông với mũi tên lên)\n2. Chọn 'Add to Home Screen'\n3. ĐÓNG Safari lại\n4. Mở app từ icon trên Màn hình chính (KHÔNG mở Safari)");
-    return;
-  }
-  
-  const codeInput = document.getElementById('employee-code-input').value.trim();
-  if (!codeInput) {
-    alert("Vui lòng nhập mã nhân viên của bạn.");
-    return;
-  }
-  
-  const name = globalEmployeeMapping[codeInput];
-  if (!name) {
-    alert("Mã nhân viên không tồn tại trong hệ thống. Vui lòng kiểm tra lại!");
-    return;
-  }
-  
-  // Lưu thông tin
-  localStorage.setItem('employeeCode', codeInput);
-  localStorage.setItem('employeeName', name);
-  document.getElementById('login-modal').style.display = 'none';
-  updateLoginUI(codeInput);
-  
-  // Gọi optIn() trong user gesture
+  if (isIOS && !isStandalone) return;
+
   if (window.OneSignal && window.OneSignal.User) {
-    window.OneSignal.User.PushSubscription.optIn().then(function() {
-      setOneSignalTag(codeInput);
-      // Kiểm tra SW registrations SAU khi optIn để debug token=NONE
-      navigator.serviceWorker.getRegistrations().then(function(regs) {
-        setTimeout(function() {
-          const token = window.OneSignal.User.PushSubscription.token;
-          const optedIn = window.OneSignal.User.PushSubscription.optedIn;
-          // Tóm tắt các SW đang active
-          const swInfo = regs.length === 0
-            ? 'NONE'
-            : regs.map(function(r) {
-                const scope = r.scope.replace('https://ndien-vt.github.io', '');
-                const state = r.active ? r.active.state : 'no-active';
-                return scope + '[' + state + ']';
-              }).join(' | ');
-          if (optedIn && token) {
-            alert("✅ Thành công! Xin chào: " + name + "\nThông báo đã bật!");
-          } else {
-            alert("⚠️ Xin chào: " + name +
-                  "\noptedIn=" + optedIn + " | token=" + (token ? "YES" : "NONE") +
-                  "\nSW (" + regs.length + "): " + swInfo);
-          }
-        }, 3000); // 3s để iOS kịp nhận token từ APNs
-      });
-    }).catch(function(e) {
-      setOneSignalTag(codeInput);
-      alert("⚠️ Lỗi optIn: " + e);
+    window.OneSignal.User.PushSubscription.optIn().then(function () {
+      setOneSignalTag(code);
+    }).catch(function (e) {
+      setOneSignalTag(code);
     });
-  } else {
-    alert("OneSignal chưa sẵn sàng, thử lại sau vài giây.");
   }
 }
 
-function closeLoginModal() {
-  document.getElementById('login-modal').style.display = 'none';
+async function autoConfirmPending(code) {
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'autoConfirm', employeeCode: code })
+    });
+  } catch (e) { }
 }
+
+// =================== EDIT MODE LOGIC ===================
+function toggleEditMode() {
+  isEditMode = true;
+  document.querySelector('.schedule-table').classList.add('edit-mode');
+  document.getElementById('editModeBtn').style.display = 'none';
+  document.getElementById('saveChangesBtn').style.display = 'inline-block';
+  document.getElementById('cancelChangesBtn').style.display = 'inline-block';
+}
+
+function cancelEditMode() {
+  isEditMode = false;
+  editedShifts = [];
+  document.querySelector('.schedule-table').classList.remove('edit-mode');
+  document.getElementById('editModeBtn').style.display = 'inline-block';
+  document.getElementById('saveChangesBtn').style.display = 'none';
+  document.getElementById('cancelChangesBtn').style.display = 'none';
+  loadSelectedMonth(); // Reload
+}
+
+function handleCellClick(td, empName, dateStr) {
+  if (!isEditMode || currentRole !== 'Admin') return;
+  targetEditCell = { td, empName, dateStr };
+  document.getElementById('shift-modal-title').innerText = "Chọn Ca Mới (" + dateStr + ")";
+  document.getElementById('shift-modal').style.display = 'flex';
+}
+
+function selectShift(newShift) {
+  if (!targetEditCell) return;
+  const { td, empName, dateStr } = targetEditCell;
+
+  td.innerText = newShift;
+  td.className = getShiftClass(newShift) + ' cell-edited';
+
+  let empCode = "";
+  for (let code in globalEmployeeMapping) {
+    if (globalEmployeeMapping[code] === empName) {
+      empCode = code; break;
+    }
+  }
+
+  const existingIdx = editedShifts.findIndex(s => s.code === empCode && s.date === dateStr);
+  if (existingIdx >= 0) {
+    editedShifts[existingIdx].newShift = newShift;
+  } else {
+    editedShifts.push({
+      code: empCode,
+      date: dateStr,
+      sheetName: document.getElementById('month-selector').value,
+      newShift: newShift
+    });
+  }
+  closeShiftModal();
+}
+
+function closeShiftModal() {
+  document.getElementById('shift-modal').style.display = 'none';
+  targetEditCell = null;
+}
+
+function getShiftClass(val) {
+  if (val.startsWith('O') || val === 'CN' || val === 'OFF') return 'cell-off';
+  else if (val === 'PH' || val.includes('PH')) return 'cell-ph';
+  else if (val.includes('AL') || val.includes('UL') || val.includes('/')) return 'cell-leave';
+  else if (val === 'S1+4' || val === 'S3+4') return 'cell-s14';
+  else if (val.includes('+')) return 'cell-ot';
+  else if (val === 'ADM') return 'cell-adm';
+  else return 'cell-std';
+}
+
+async function saveEditedShifts() {
+  if (editedShifts.length === 0) {
+    alert("Chưa có thay đổi nào để lưu.");
+    return;
+  }
+
+  document.getElementById('loader-container').style.display = 'flex';
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'updateMultipleShifts', changes: editedShifts })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Lưu thành công!");
+      cancelEditMode();
+    } else {
+      alert("Lỗi: " + data.error);
+    }
+  } catch (err) {
+    alert("Lỗi kết nối: " + err);
+  }
+  document.getElementById('loader-container').style.display = 'none';
+}
+// =======================================================
 
 function setOneSignalTag(code) {
-  window.OneSignalDeferred.push(function(OneSignal) {
+  window.OneSignalDeferred.push(function (OneSignal) {
     try {
       OneSignal.User.addTag("employee_code", code);
       console.log("OneSignal tag updated:", code);
-      
+
       // Set External ID
       OneSignal.login(code).then(() => {
         console.log("OneSignal logged in with external ID:", code);
       }).catch(err => {
         console.warn("OneSignal login warning:", err);
       });
-    } catch(e) {
+    } catch (e) {
       console.warn("OneSignal Catch warning:", e.message);
     }
   });
@@ -190,7 +299,7 @@ async function fetchInitialData() {
     if (!response.ok) throw new Error('Network response was not ok');
     const data = await response.json();
     if (data.error) throw new Error(data.error);
-    
+
     globalEmployeeMapping = data.employeeMapping || {};
     initDropdown(data);   // data.schedule đã có sẵn, không cần gọi API lần 2
   } catch (error) {
@@ -302,17 +411,15 @@ function renderTable(data) {
       let tdName = document.createElement('td');
       tdName.textContent = emp.name; tdName.className = 'col-name-cell';
       tr.appendChild(tdName);
-      emp.shifts.forEach(shift => {
+      emp.shifts.forEach((shift, index) => {
         let td = document.createElement('td');
         let val = shift ? String(shift).trim() : "";
         td.textContent = val;
-        if (val.startsWith('O') || val === 'CN' || val === 'OFF')
-          td.className = 'cell-off';
-        else if (val === 'PH' || val.includes('PH')) td.className = 'cell-ph';
-        else if (val.includes('AL') || val.includes('UL') || val.includes('/')) td.className = 'cell-leave';
-        else if (val.includes('+')) td.className = 'cell-ot';
-        else if (val === 'ADM') td.className = 'cell-adm';
-        else td.className = 'cell-std';
+        td.className = getShiftClass(val);
+
+        let dateStr = data.dates[index];
+        td.onclick = function () { handleCellClick(td, emp.name, dateStr); };
+
         tr.appendChild(td);
       });
     }

@@ -99,9 +99,39 @@ html, body {
   cursor: pointer;
 }
 
-/* Hide register button and badge on desktop devices */
+/* Hide register button and badge on desktop devices by default, but keep them if logged in as Admin */
 @media (min-width: 768px) {
   #registerBtn, #employeeBadge {
     display: none !important;
   }
+  body.admin-mode #registerBtn, body.admin-mode #employeeBadge {
+    display: inline-block !important;
+  }
+}
+
+/* Edit Mode Styles */
+.schedule-table.edit-mode td:not(.col-name-cell) {
+  cursor: pointer;
+  border: 1px dashed #999;
+}
+.schedule-table.edit-mode td:not(.col-name-cell):hover {
+  background-color: #e2e6ea;
+  opacity: 0.8;
+}
+.cell-edited {
+  animation: blinkBorder 1.5s infinite;
+  box-shadow: inset 0 0 5px rgba(255, 193, 7, 0.8) !important;
+}
+@keyframes blinkBorder {
+  0% { border: 2px solid #ffc107; }
+  50% { border: 2px solid #fd7e14; }
+  100% { border: 2px solid #ffc107; }
+}
+
+/* S1+4 and S3+4 Styles */
+.cell-s14, .cell-s34 {
+  background-color: #fff3cd !important;
+  color: #856404 !important;
+  font-weight: bold !important;
+  border: 1px solid #ffeeba !important;
 }
