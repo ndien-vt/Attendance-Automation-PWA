@@ -131,11 +131,6 @@ function applyUserRole(role, code) {
 
   const registerBtn = document.getElementById('registerBtn');
   const employeeBadge = document.getElementById('employeeBadge');
-  if (registerBtn && employeeBadge) {
-    registerBtn.style.display = 'none';
-    employeeBadge.style.display = 'inline-block';
-    employeeBadge.textContent = "👤 " + code;
-  }
 
   if (role === 'Admin') {
     document.body.classList.add('admin-mode');
@@ -146,7 +141,35 @@ function applyUserRole(role, code) {
   }
 
   if (role !== 'Guest') {
-    optInOneSignal(code);
+    if (registerBtn && employeeBadge) {
+      // Mặc định hiện badge nhân viên
+      registerBtn.style.display = 'none';
+      employeeBadge.style.display = 'inline-block';
+      employeeBadge.textContent = "👤 " + code;
+
+      // Kiểm tra trạng thái đăng ký nhận thông báo
+      window.OneSignalDeferred.push(function (OneSignal) {
+        if (OneSignal.User && OneSignal.User.PushSubscription) {
+          const optedIn = OneSignal.User.PushSubscription.optedIn;
+          if (!optedIn) {
+            // Nếu trình duyệt chưa cấp quyền, đổi nút thành "Thông báo"
+            employeeBadge.style.display = 'none';
+            registerBtn.style.display = 'inline-block';
+            registerBtn.textContent = "🔔 Thông báo";
+            registerBtn.onclick = function () {
+              optInOneSignal(code); // Sẽ hiển thị prompt xin quyền chuẩn xác
+              registerBtn.style.display = 'none';
+              employeeBadge.style.display = 'inline-block';
+              employeeBadge.textContent = "👤 " + code;
+            };
+          } else {
+            // Đã cấp quyền từ trước thì cập nhật Tag
+            setOneSignalTag(code);
+          }
+        }
+      });
+    }
+
     autoConfirmPending(code);
   }
 }
@@ -170,7 +193,7 @@ function optInOneSignal(code) {
 function checkPushStatus() {
   const code = localStorage.getItem('employeeCode');
   if (!code) return;
-  
+
   if (window.OneSignal && window.OneSignal.User) {
     window.OneSignal.User.PushSubscription.optIn().then(() => {
       const token = window.OneSignal.User.PushSubscription.token;
