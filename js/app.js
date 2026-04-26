@@ -149,23 +149,32 @@ function applyUserRole(role, code) {
 
       // Kiểm tra trạng thái đăng ký nhận thông báo
       window.OneSignalDeferred.push(function (OneSignal) {
-        if (OneSignal.User && OneSignal.User.PushSubscription) {
-          const optedIn = OneSignal.User.PushSubscription.optedIn;
-          if (!optedIn) {
-            // Nếu trình duyệt chưa cấp quyền, đổi nút thành "Thông báo"
-            employeeBadge.style.display = 'none';
-            registerBtn.style.display = 'inline-block';
-            registerBtn.textContent = "🔔 Thông báo";
-            registerBtn.onclick = function () {
-              optInOneSignal(code); // Sẽ hiển thị prompt xin quyền chuẩn xác
-              registerBtn.style.display = 'none';
-              employeeBadge.style.display = 'inline-block';
-              employeeBadge.textContent = "👤 " + code;
-            };
-          } else {
-            // Đã cấp quyền từ trước thì cập nhật Tag
-            setOneSignalTag(code);
-          }
+        let isGranted = false;
+
+        // 1. Kiểm tra trực tiếp quyền Push Notification từ trình duyệt (nhanh & đồng bộ)
+        if (typeof Notification !== 'undefined') {
+          isGranted = (Notification.permission === 'granted');
+        } else if (OneSignal.Notifications) {
+          isGranted = OneSignal.Notifications.permission;
+        }
+
+        // 2. Dự phòng lấy trạng thái optedIn của OneSignal (chậm hơn 1 chút)
+        const optedIn = OneSignal.User && OneSignal.User.PushSubscription && OneSignal.User.PushSubscription.optedIn;
+
+        if (isGranted || optedIn) {
+          // Đã cấp quyền từ trước, giữ nguyên thẻ Mã NV và cập nhật Tag ngầm
+          setOneSignalTag(code);
+        } else {
+          // Nếu trình duyệt chưa cấp quyền, đổi nút thành "Thông báo"
+          employeeBadge.style.display = 'none';
+          registerBtn.style.display = 'inline-block';
+          registerBtn.textContent = "🔔 Thông báo";
+          registerBtn.onclick = function () {
+            optInOneSignal(code); // Sẽ hiển thị prompt xin quyền chuẩn xác
+            registerBtn.style.display = 'none';
+            employeeBadge.style.display = 'inline-block';
+            employeeBadge.textContent = "👤 " + code;
+          };
         }
       });
     }
