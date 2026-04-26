@@ -167,6 +167,24 @@ function optInOneSignal(code) {
   });
 }
 
+function checkPushStatus() {
+  const code = localStorage.getItem('employeeCode');
+  if (!code) return;
+  
+  if (window.OneSignal && window.OneSignal.User) {
+    window.OneSignal.User.PushSubscription.optIn().then(() => {
+      const token = window.OneSignal.User.PushSubscription.token;
+      const optedIn = window.OneSignal.User.PushSubscription.optedIn;
+      alert("Trạng thái thông báo cho mã " + code + ":\n- Đã đăng ký nhận: " + (optedIn ? "CÓ" : "CHƯA") + "\n- Push Token: " + (token ? "HỢP LỆ" : "TRỐNG"));
+      setOneSignalTag(code);
+    }).catch(err => {
+      alert("Bạn đã chặn thông báo hoặc xảy ra lỗi: " + err);
+    });
+  } else {
+    alert("Hệ thống thông báo OneSignal chưa sẵn sàng.");
+  }
+}
+
 async function autoConfirmPending(code) {
   try {
     await fetch(API_URL, {
@@ -319,6 +337,7 @@ function initDropdown(data) {
   selector.innerHTML = '';
 
   data.sheetNames.forEach(name => {
+    if (name.toLowerCase().includes('log') || name.toLowerCase().includes('xacnhan')) return;
     let option = document.createElement('option');
     option.value = name;
     option.textContent = "LỊCH LÀM VIỆC " + name;
