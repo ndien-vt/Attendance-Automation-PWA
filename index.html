@@ -2,96 +2,43 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Lịch Làm Việc 2026</title>
-  
-  <!-- PWA Setup -->
-  <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0056b3">
-  <link rel="icon" type="image/png" href="./images/icon-192x192.png">
-  <link rel="apple-touch-icon" href="./images/icon-192x192.png">
-  
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  
-  <!-- OneSignal SDK -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-  
-  <!-- Google Identity Services -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  
-  <!-- Styles -->
-  <link rel="stylesheet" href="./css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thông báo chuyển link lịch làm việc</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      padding: 50px 20px; 
+      background-color: #f4f6f9; 
+      color: #333; 
+    }
+    .container { 
+      max-width: 400px; 
+      margin: 0 auto; 
+      background: #ffffff; 
+      padding: 30px; 
+      border-radius: 10px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    h2 { color: #d9534f; margin-top: 0;}
+    p { font-size: 16px; line-height: 1.5; margin-bottom: 25px; }
+    .btn { 
+      display: inline-block; 
+      padding: 12px 24px; 
+      background-color: #0275d8; 
+      color: #ffffff; 
+      text-decoration: none; 
+      border-radius: 5px; 
+      font-weight: bold; 
+    }
+    .btn:hover { background-color: #025aa5; }
+  </style>
 </head>
 <body>
-  <div id="loader-container">
-    <div class="spinner"></div>
-    <div class="loading-text" id="loading-text">Đang tải dữ liệu...</div>
+  <div class="container">
+    <h2>⚠️ THÔNG BÁO ĐỔI LINK</h2>
+    <p>Hệ thống lịch làm việc đã được chuyển sang địa chỉ mới ổn định hơn. Vui lòng bấm vào nút bên dưới để truy cập và lưu lại link mới nhé.</p>
+    <a href="https://bld-attendance.web.app/" class="btn">TRUY CẬP LỊCH MỚI</a>
   </div>
-  
-  <div id="content">
-    <div class="title-container">
-      <select id="month-selector" class="month-selector" onchange="loadSelectedMonth()"></select>
-    </div>
-    
-    <div class="info-bar">
-      <div class="info-text dept-text">Bộ phận: Blending & Packing</div>
-      <div class="info-text">
-        <span id="updateTime"></span>
-        <button id="registerBtn" onclick="handleGoogleLoginClick()" style="font-size: 11px; padding: 3px 8px; margin-left: 10px; border: 1px solid #0056b3; background: white; color: #0056b3; border-radius: 3px; cursor: pointer; font-weight: bold;">Đăng nhập</button>
-        <span id="employeeBadge" style="display: none; font-size: 11px; padding: 3px 8px; margin-left: 10px; background: #e0f0ff; color: #0056b3; border-radius: 3px; font-weight: bold; border: 1px solid #0056b3; cursor: pointer;" onclick="handleGoogleLoginClick()" title="Nhấn để đăng nhập lại"></span>
-      </div>
-    </div>
-    
-    <!-- Thanh công cụ Admin (Ẩn mặc định) -->
-    <div id="admin-toolbar" style="display: none; justify-content: space-between; align-items: center; background: #fff3cd; padding: 5px 8px; margin-bottom: 4px; border: 1px solid #ffeeba; border-radius: 4px;">
-      <span style="font-size: 12px; font-weight: bold; color: #856404;">Chế độ Sửa Ca</span>
-      <div>
-        <button id="editModeBtn" onclick="toggleEditMode()" style="font-size: 11px; padding: 3px 8px; border: 1px solid #856404; background: #856404; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Bật Sửa Ca</button>
-        <button id="saveChangesBtn" onclick="saveEditedShifts()" style="display: none; font-size: 11px; padding: 3px 8px; border: 1px solid #28a745; background: #28a745; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; margin-left: 5px;">Lưu</button>
-        <button id="cancelChangesBtn" onclick="cancelEditMode()" style="display: none; font-size: 11px; padding: 3px 8px; border: 1px solid #dc3545; background: #dc3545; color: white; border-radius: 3px; cursor: pointer; font-weight: bold; margin-left: 5px;">Hủy</button>
-      </div>
-    </div>
-    
-    <div class="table-responsive">
-      <table class="schedule-table">
-        <thead>
-          <tr id="header-dates-row">
-            <th rowspan="2" class="col-name-header">Họ Tên</th>
-          </tr>
-          <tr id="header-days-row"></tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-    
-    <div style="text-align: center; padding: 15px 0 10px 0; color: #b0b0b0; font-weight: bold; font-size: 11px;">
-      Copyright by Dien.Hoang - Version <span id="app-version">2.1</span>
-    </div>
-  </div>
-  
-  <!-- Bottom Sheet Chọn Ca -->
-  <div id="shift-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:10001; align-items:flex-end; justify-content:center;">
-    <div style="background:white; padding:20px; border-radius:15px 15px 0 0; width:100%; box-sizing:border-box; animation: slideUp 0.3s ease-out;">
-      <h3 id="shift-modal-title" style="margin-top:0; color:#0056b3; text-align:center;">Chọn Ca Mới</h3>
-      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px;">
-        <button onclick="selectShift('S1')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #ccc; background:#fff;">S1</button>
-        <button onclick="selectShift('S2')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #ccc; background:#fff;">S2</button>
-        <button onclick="selectShift('S3')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #ccc; background:#fff;">S3</button>
-        <button onclick="selectShift('O')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #ccc; background:#ff4d4d; color:white;">O</button>
-        <button onclick="selectShift('S1+4')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #d39e00; background:#fff3cd; color:#856404;">S1+4</button>
-        <button onclick="selectShift('S3+4')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #d39e00; background:#fff3cd; color:#856404;">S3+4</button>
-        <button onclick="selectShift('ADM')" style="padding:15px; font-size:16px; font-weight:bold; border-radius:8px; border:1px solid #ccc; background:#fff; color:black;">ADM</button>
-      </div>
-      <button onclick="closeShiftModal()" style="background:#6c757d; color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; cursor:pointer; width:100%;">Đóng</button>
-    </div>
-  </div>
-  
-  <style>
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  </style>
-  
-  <!-- App Logic -->
-  <script src="./js/app.js"></script>
 </body>
 </html>
